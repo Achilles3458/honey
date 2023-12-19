@@ -225,8 +225,8 @@ const Product = () => {
       <MapInteractionCSS
         value={value}
         onChange={(newValue) => setValue(newValue)}
-        disableZoom={true}
-        disablePan={true}
+        disableZoom={false}
+        disablePan={false}
       >
         <div className='h-[100vh] w-[100vw]'>
           <DndProvider backend={HTML5Backend}>
