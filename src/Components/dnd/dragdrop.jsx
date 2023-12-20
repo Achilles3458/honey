@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
-import Cell from '../../Components/cell/index';
-import Toolbar from '../../Components/toolbar';
-import { MapInteractionCSS } from 'react-map-interaction';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import Container from '../../Components/dnd';
+import Cell from '../cell/index';
+import { useDrop } from 'react-dnd';
 
-const Product = () => {
-  const [value, setValue] = useState({
-    scale: 1,
-    translation: { x: 0, y: 0 },
-  });
+const Dnd = () => {
   const fakeData = [
     {
       id: -1,
@@ -269,36 +261,137 @@ const Product = () => {
       col: -1,
     },
   ];
+
+  const [cells, setCells] = useState(fakeData);
+
+  const moveCell = (id, row, col) => {
+    if (checkDrop(row, col))
+      setCells((prevCells) => {
+        const cellIndex = prevCells.findIndex((hex) => hex.id === id);
+        // Only update if the hexagon is found
+        if (cellIndex === -1) {
+          return prevCells; // No change to the state.
+        }
+
+        const cell = prevCells[cellIndex];
+        // Only update if left or top has changed
+        if (cell.row === row && cell.top === row) {
+          return prevCells; // No change to the state.
+        }
+
+        const newHexagons = [...prevCells];
+        newHexagons[cellIndex] = { ...cell, row, col };
+
+        return newHexagons;
+      });
+  };
+
+  const getPosition = (row, col) => {
+    let x = 0;
+    let y = 0;
+
+    if (row % 2 === 1 || row % 2 === -1) {
+      x = row * 140;
+      y = col * 160 - 80;
+    } else {
+      x = row * 140;
+      y = col * 160;
+    }
+    return { x, y };
+  };
+
+  const getRowCol = (x, y) => {
+    let rownum = 0;
+    let colnum = 0;
+
+    rownum = Math.floor(x / 160) + 1;
+    if (rownum % 2 === 1 || rownum % 2 === -1) {
+      colnum = Math.floor((y + 80) / 160 + 0.5);
+    } else {
+      colnum = Math.floor(y / 160 + 0.5);
+    }
+
+    return { row: rownum, col: colnum };
+  };
+
+  const checkDrop = (row, col) => {
+    console.log(row, col);
+    if (cells.findIndex((hex) => hex.row === row && hex.col === col) !== -1)
+      return false;
+    else if (
+      (cells.findIndex((hex) => hex.row === row && hex.col === col - 1) !==
+        -1 ||
+        cells.findIndex((hex) => hex.row === row + 1 && hex.col === col) !==
+          -1 ||
+        cells.findIndex((hex) => hex.row === row + 1 && hex.col === col + 1) !==
+          -1 ||
+        cells.findIndex((hex) => hex.row === row && hex.col === col + 1) !==
+          -1 ||
+        cells.findIndex((hex) => hex.row === row - 1 && hex.col === col + 1) !==
+          -1 ||
+        cells.findIndex((hex) => hex.row === row - 1 && hex.col === col - 1) !==
+          -1) &&
+      row % 2 === 0
+    )
+      return true;
+    // else if (
+    //   (cells.findIndex((hex) => hex.row === row && hex.col === col - 1) !==
+    //     -1 ||
+    //     cells.findIndex((hex) => hex.row === row + 1 && hex.col === col - 1) !==
+    //       -1 ||
+    //     cells.findIndex((hex) => hex.row === row + 1 && hex.col === col) !==
+    //       -1 ||
+    //     cells.findIndex((hex) => hex.row === row && hex.col === col + 1) !==
+    //       -1 ||
+    //     cells.findIndex((hex) => hex.row === row - 1 && hex.col === col) !==
+    //       -1 ||
+    //     cells.findIndex((hex) => hex.row === row - 1 && hex.col === col - 1) !==
+    //       -1) &&
+    //   (row % 2 === 1 || row % 2 === -1)
+    // )
+    //   return true;
+
+    return false;
+    // const cellIndex = cells.findIndex(
+    //   (hex) =>
+    //     (hex.row !== row && hex.col !== col) ||
+    //     (hex.row === row && hex.col === col - 1) ||
+    //     (hex.row === row + 1 && hex.col === col) ||
+    //     (hex.row === row + 1 && hex.col === col + 1) ||
+    //     (hex.row === row && hex.col === col + 1) ||
+    //     (hex.row === row - 1 && hex.col === col + 1) ||
+    //     (hex.row === row - 1 && hex.col === col)
+    // );
+    // console.log(cellIndex);
+    // return cellIndex !== -1;
+  };
+
+  const [, drop] = useDrop({
+    accept: 'cell',
+    drop: (item, monitor) => {
+      const delta = monitor.getDifferenceFromInitialOffset();
+      const left = Math.round(getPosition(item.row, item.col).x + delta.x);
+      const top = Math.round(getPosition(item.row, item.col).y + delta.y);
+      moveCell(item.id, getRowCol(left, top).row, getRowCol(left, top).col);
+      return undefined;
+    },
+  });
+
   return (
     <div className='relative flex items-center w-full h-full'>
-      {/* <MapInteractionCSS
-        value={value}
-        onChange={(newValue) => setValue(newValue)}
-        disableZoom={false}
-        disablePan={false}
-      > */}
-      {/* <div className='h-[100vh] w-[100vw]'>
-        <DndProvider backend={HTML5Backend}>
-          {fakeData.map((data) => {
-            return (
-              <Cell
-                row={data.row}
-                col={data.col}
-                id={data.id}
-                title={data.title}
-                content={data.content}
-              />
-            );
-          })}
-        </DndProvider>
-      </div> */}
-      {/* </MapInteractionCSS> */}
-      <DndProvider backend={HTML5Backend}>
-        <Container />
-      </DndProvider>
-      <Toolbar />
+      <div className='h-[100vh] w-[100vw]' ref={drop}>
+        {cells.map((data) => (
+          <Cell
+            row={data.row}
+            col={data.col}
+            id={data.id}
+            title={data.title}
+            content={data.content}
+          />
+        ))}
+      </div>
     </div>
   );
 };
 
-export default Product;
+export default Dnd;
