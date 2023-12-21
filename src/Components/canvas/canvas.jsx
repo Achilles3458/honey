@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { Stage, Layer, Path, Group, Text } from 'react-konva';
 
-const Canvas = () => {
-  const initX = 960;
-  const initY = 514;
+const Canvas = ({ value }) => {
+  const initX = 0;
+  const initY = 0;
   const cellWidth = 140;
   const cellHeight = 160;
 
@@ -35,44 +35,55 @@ const Canvas = () => {
     return { row: rownum, col: colnum };
   };
 
-  const checkDrop = (row, col) => {
-    if (cells.findIndex((hex) => hex.row === row && hex.col === col) !== -1)
-      return false;
-    else if (
-      (cells.findIndex((hex) => hex.row === row && hex.col === col - 1) !==
-        -1 ||
-        cells.findIndex((hex) => hex.row === row + 1 && hex.col === col) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row + 1 && hex.col === col + 1) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row && hex.col === col + 1) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row - 1 && hex.col === col + 1) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row - 1 && hex.col === col - 1) !==
-          -1) &&
-      row % 2 === 0
-    )
-      return true;
-    else if (
-      (cells.findIndex((hex) => hex.row === row && hex.col === col - 1) !==
-        -1 ||
-        cells.findIndex((hex) => hex.row === row + 1 && hex.col === col - 1) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row + 1 && hex.col === col) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row && hex.col === col + 1) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row - 1 && hex.col === col) !==
-          -1 ||
-        cells.findIndex((hex) => hex.row === row - 1 && hex.col === col - 1) !==
-          -1) &&
-      (row % 2 === 1 || row % 2 === -1)
-    )
-      return true;
+  function getKey(cell) {
+    return `${cell.row},${cell.col}`;
+  }
 
-    return false;
-  };
+  function getNeighbors(cell, cellSet) {
+    const offsets =
+      cell.row % 2 === 0
+        ? [
+            [-1, 0],
+            [-1, +1],
+            [0, -1],
+            [0, +1],
+            [+1, 0],
+            [+1, +1],
+          ]
+        : [
+            [-1, -1],
+            [-1, 0],
+            [0, -1],
+            [0, +1],
+            [+1, -1],
+            [+1, 0],
+          ];
+    return offsets
+      .map(([dr, dc]) => ({ row: cell.row + dr, col: cell.col + dc }))
+      .filter((neighbor) => cellSet.has(getKey(neighbor)));
+  }
+
+  function dfs(cell, cellSet, visited) {
+    const cellKey = getKey(cell);
+    visited.add(cellKey);
+
+    const neighbors = getNeighbors(cell, cellSet);
+    for (const neighbor of neighbors) {
+      const neighborKey = getKey(neighbor);
+      if (!visited.has(neighborKey)) {
+        dfs(neighbor, cellSet, visited);
+      }
+    }
+  }
+
+  function isHoneycombConnected(honeycomb) {
+    const cellSet = new Set(honeycomb.map(getKey));
+    const visited = new Set();
+    if (honeycomb.length > 0) {
+      dfs(honeycomb[0], cellSet, visited);
+    }
+    return visited.size === honeycomb.length;
+  }
 
   const fakeData = [
     {
@@ -145,16 +156,7 @@ const Canvas = () => {
       x: getPosition(1, 0).x,
       y: getPosition(1, 0).y,
     },
-    {
-      id: 7,
-      title: '6, 1',
-      content:
-        'Discover the latest fashion trends in our store. Shop the new collection ...',
-      row: 6,
-      col: 1,
-      x: getPosition(6, 1).x,
-      y: getPosition(6, 1).y,
-    },
+
     {
       id: 8,
       title: '3, 1',
@@ -191,9 +193,9 @@ const Canvas = () => {
       content:
         'Discover the latest fashion trends in our store. Shop the new collection ...',
       row: 2,
-      col: 3,
-      x: getPosition(2, 3).x,
-      y: getPosition(2, 3).y,
+      col: 2,
+      x: getPosition(2, 2).x,
+      y: getPosition(2, 2).y,
     },
     {
       id: 12,
@@ -266,16 +268,6 @@ const Canvas = () => {
       y: getPosition(-2, 0).y,
     },
     {
-      id: -19,
-      title: '-4, 0',
-      content:
-        'Discover the latest fashion trends in our store. Shop the new collection ...',
-      row: -4,
-      col: 0,
-      x: getPosition(-4, 0).x,
-      y: getPosition(-4, 0).y,
-    },
-    {
       id: -20,
       title: '-2, 1',
       content:
@@ -290,28 +282,28 @@ const Canvas = () => {
   const [cells, setCells] = useState(fakeData);
   const layerRef = useRef(null);
 
+  const handleDragStart = (e) => {
+    const shape = e.target;
+    shape.moveToTop();
+    shape.getLayer().batchDraw();
+  };
+
   const handleDragEnd = (e) => {
     const id = e.target.id();
     const row = getRowCol(e.target.position().x, e.target.position().y).row;
     const col = getRowCol(e.target.position().x, e.target.position().y).col;
-
     setCells((prevCells) => {
       const cellIndex = prevCells.findIndex((hex) => hex.id === id);
-      if (cellIndex === -1) {
-        return prevCells;
-      }
-      const cell = prevCells[cellIndex];
       const newHexagons = [...prevCells];
-      if (!checkDrop(row, col)) {
-        newHexagons[cellIndex] = {
-          ...cell,
-          row: cell.row,
-          col: cell.col,
-          x: getPosition(cell.row, cell.col).x,
-          y: getPosition(cell.row, cell.col).y,
-        };
-        return newHexagons;
-      }
+      const cell = prevCells[cellIndex];
+      const checkData = [...prevCells];
+      const checkCell = checkData[cellIndex];
+      checkData[cellIndex] = {
+        ...checkCell,
+        row: row,
+        col: col,
+      };
+      isHoneycombConnected(checkData);
       if (cell.row === row && cell.col === col) {
         newHexagons[cellIndex] = {
           ...cell,
@@ -321,22 +313,37 @@ const Canvas = () => {
           y: getPosition(row, col).y,
         };
         return newHexagons;
+      } else if (isHoneycombConnected(checkData)) {
+        newHexagons[cellIndex] = {
+          ...cell,
+          row: row,
+          col: col,
+          x: getPosition(row, col).x,
+          y: getPosition(row, col).y,
+        };
+        return newHexagons;
+      } else {
+        newHexagons[cellIndex] = {
+          ...cell,
+          row: cell.row,
+          col: cell.col,
+          x: getPosition(cell.row, cell.col).x,
+          y: getPosition(cell.row, cell.col).y,
+        };
+        return newHexagons;
       }
-
-      newHexagons[cellIndex] = {
-        ...cell,
-        row: row,
-        col: col,
-        x: getPosition(row, col).x,
-        y: getPosition(row, col).y,
-      };
-      return newHexagons;
     });
   };
 
   return (
     <Stage width={window.innerWidth} height={window.innerHeight}>
-      <Layer ref={layerRef} scaleX={2} scaleY={2} x={-500} y={-500}>
+      <Layer
+        ref={layerRef}
+        scaleX={(value.scale + 1) / 50}
+        scaleY={(value.scale + 1) / 50}
+        x={value.translation.x + window.innerWidth / 2}
+        y={value.translation.y + window.innerHeight}
+      >
         {cells.map((cell, index) => {
           return (
             <Group
@@ -344,19 +351,17 @@ const Canvas = () => {
               id={cell.id}
               x={cell.x}
               y={cell.y}
-              draggable
+              draggable={!value.isDragging}
+              onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
               _useStrictMode={true}
-              scaleX={1}
-              scaleY={1}
-              // width={140}
             >
               <Path
                 data='M22.4641 92.5C20.3205 88.7872 20.3205 84.2128 22.4641 80.5L58.2859 18.4548C60.4295 14.742 64.391 12.4548 68.6782 12.4548L140.322 12.4548C144.609 12.4548 148.571 14.742 150.714 18.4548L186.536 80.5C188.679 84.2128 188.679 88.7872 186.536 92.5L150.714 154.545C148.571 158.258 144.609 160.545 140.322 160.545L68.6782 160.545C64.391 160.545 60.4295 158.258 58.2859 154.545L22.4641 92.5Z'
                 fill='#FBCC43'
                 shadowColor='black'
-                shadowBlur={20}
-                shadowOpacity={0.5}
+                shadowBlur={10}
+                shadowOpacity={0.3}
                 shadowOffsetX={0}
                 shadowOffsetY={10}
                 numPoints={5}
@@ -373,7 +378,7 @@ const Canvas = () => {
                 letterSpacing={1}
               />
               <Text
-                text={cell.content}
+                text={`${cell.row},${cell.col}`}
                 width={125}
                 x={42}
                 y={70}
