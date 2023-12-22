@@ -44,3 +44,24 @@
 .slick-arrow:before {
   display: none;
 }
+
+@font-face {
+  font-family: 'SF-regular';
+  src: url('./assets//font/Inter-Regular.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF-medium';
+  src: url('./assets//font/Inter-Medium.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF-semibold';
+  src: url('./assets//font/Inter-SemiBold.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
